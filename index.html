@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataPerson — Gestion & Analyse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+:root{
+  --bg:#F6F4F0; --surface:#fff; --ink:#14161F; --ink-2:#4A4F5E; --muted:#8A8F9C; --line:#E7E3DC;
+  --accent:#E8553D; --accent-ink:#B83A25; --accent-soft:#FDECE8;
+  --navy:#2B4C8C; --sand:#C9A66B; --success:#1F9D6B; --danger:#D93A3A;
+  --shadow-sm:0 1px 2px rgba(20,22,31,.06);
+  --shadow:0 1px 2px rgba(20,22,31,.04),0 12px 28px -12px rgba(20,22,31,.14);
+  --shadow-lg:0 24px 48px -12px rgba(20,22,31,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+.hidden,[hidden]{display:none!important}
+svg.lucide{width:18px;height:18px;stroke-width:2;flex-shrink:0}
+a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+a:hover{text-decoration:underline}
+.muted{color:var(--muted)}
+
+/* Splash & spinner */
+.splash{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:80}
+.spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Marque */
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.15rem;letter-spacing:-.02em}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800}
+
+/* ===== AUTH ===== */
+.auth{display:grid;grid-template-columns:1.05fr 1fr;min-height:100vh}
+.auth-brand{background:var(--ink);color:#F3F1EC;padding:48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.auth-brand::after{content:'';position:absolute;width:560px;height:560px;border-radius:50%;background:radial-gradient(circle,rgba(232,85,61,.35),transparent 65%);right:-200px;bottom:-200px}
+.auth-pitch{position:relative;z-index:1;max-width:440px}
+.auth-pitch h1{font-size:clamp(2rem,3.4vw,2.9rem);line-height:1.1;letter-spacing:-.03em;font-weight:800;margin-bottom:16px}
+.auth-pitch h1 em{font-style:normal;color:var(--accent)}
+.auth-pitch p{color:#A9ADB9;font-size:1.05rem;margin-bottom:32px}
+.features{list-style:none;display:grid;gap:14px}
+.features li{display:flex;align-items:center;gap:12px;color:#D9DBE2}
+.features li svg{color:var(--accent);background:rgba(232,85,61,.14);padding:7px;width:34px;height:34px;border-radius:10px}
+.auth-foot{color:#6B7080;font-size:.85rem;position:relative;z-index:1}
+.auth-panel{display:grid;place-items:center;padding:32px 20px}
+.auth-card{width:100%;max-width:400px}
+.auth-card .mobile-brand{display:none;margin-bottom:28px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:#ECE8E1;padding:4px;border-radius:12px;margin-bottom:32px}
+.tabs button{border:0;background:transparent;padding:10px;border-radius:9px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:.2s}
+.tabs button.active{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm)}
+.auth-card h2{font-size:1.75rem;letter-spacing:-.02em;font-weight:800}
+.auth-sub{margin:6px 0 28px}
+.auth-form{display:grid;gap:16px}
+.auth-links{display:flex;justify-content:flex-end;font-size:.9rem;margin-top:-4px}
+.auth-back{text-align:center;font-size:.9rem}
+
+/* Champs */
+.field{display:grid;gap:7px}
+.field label,.field .label{font-size:.85rem;font-weight:600;color:var(--ink-2)}
+.input-wrap{position:relative}
+.input-wrap>svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.input{width:100%;height:48px;padding:0 14px 0 42px;border:1.5px solid var(--line);border-radius:12px;background:#fff;transition:border-color .15s,box-shadow .15s}
+.input.no-icon{padding-left:14px}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.toggle-pass{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;padding:9px;color:var(--muted);cursor:pointer;border-radius:8px;display:grid}
+.toggle-pass:hover{color:var(--ink)}
+.hint{font-size:.8rem;color:var(--muted)}
+
+/* Boutons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 20px;border-radius:12px;border:0;font-weight:700;cursor:pointer;transition:transform .15s,background .15s,box-shadow .15s;white-space:nowrap}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.65;cursor:not-allowed}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover:not(:disabled){background:#000;box-shadow:0 10px 20px -10px rgba(20,22,31,.6)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover:not(:disabled){background:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{background:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-block{width:100%}
+.btn .spinner{width:18px;height:18px;border-width:2.5px;border-color:rgba(255,255,255,.35);border-top-color:#fff}
+.btn-ghost .spinner{border-color:var(--line);border-top-color:var(--ink)}
+.icon-btn{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;border:0;background:transparent;cursor:pointer;color:inherit;transition:.15s}
+.icon-btn:hover{background:rgba(255,255,255,.08)}
+
+/* ===== APP ===== */
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--ink);color:#E9E7E2;padding:24px 16px;display:flex;flex-direction:column;gap:32px;position:sticky;top:0;height:100vh}
+.sidebar .brand{padding:0 8px}
+.nav{display:grid;gap:4px;flex:1;align-content:start}
+.nav-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:#6B7080;padding:0 12px 8px;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;border:0;background:transparent;color:#A9ADB9;font-weight:600;cursor:pointer;text-align:left;transition:.15s}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#fff}
+.nav-item.active{background:rgba(232,85,61,.15);color:#fff}
+.nav-item.active svg{color:var(--accent)}
+.nav-count{margin-left:auto;font-size:.75rem;background:rgba(255,255,255,.08);padding:2px 9px;border-radius:20px}
+.user-box{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+.user-avatar{width:36px;height:36px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:.85rem;flex-shrink:0}
+.user-meta{min-width:0;flex:1;line-height:1.3}
+.user-meta strong{display:block;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-meta small{display:block;color:#8A8F9C;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.main{padding:36px 44px 60px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:28px}
+.eyebrow{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent-ink);font-weight:700;margin-bottom:4px}
+.topbar h1{font-size:2rem;letter-spacing:-.03em;font-weight:800;line-height:1.15}
+.date-chip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:.85rem;font-weight:600;color:var(--ink-2)}
+.mobile-only{display:none!important}
+
+.page{display:none;animation:rise .35s ease}
+.page.active{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:var(--shadow)}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}
+.card-head h3{font-size:1rem;font-weight:700}
+
+/* Formulaire d'ajout */
+.register-grid{display:grid;grid-template-columns:300px 1fr;gap:32px}
+.dropzone{border:2px dashed var(--line);border-radius:18px;aspect-ratio:1/1.1;display:grid;place-items:center;text-align:center;padding:20px;cursor:pointer;background:#FBFAF8;transition:.2s;position:relative;overflow:hidden}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:var(--accent-soft)}
+.dropzone:focus-visible{outline:none;box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}
+.dropzone.has-file{border-style:solid;border-color:var(--line)}
+.dz-icon{width:56px;height:56px;border-radius:16px;background:#fff;box-shadow:var(--shadow-sm);display:grid;place-items:center;margin:0 auto 14px;color:var(--accent)}
+.dz-icon svg{width:24px;height:24px}
+.dropzone strong{display:block;margin-bottom:4px}
+.dropzone small{color:var(--muted)}
+.dropzone img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dz-change{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(20,22,31,.8);color:#fff;font-size:.8rem;font-weight:600;padding:7px 14px;border-radius:20px;backdrop-filter:blur(6px);z-index:1;display:flex;gap:6px;align-items:center}
+.dz-change svg{width:14px;height:14px}
+.form-fields{display:grid;gap:20px;align-content:start}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.segmented input{position:absolute;opacity:0;pointer-events:none}
+.segmented label{display:flex;align-items:center;justify-content:center;height:48px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;font-weight:600;color:var(--ink-2);transition:.15s;font-size:.92rem;background:#fff}
+.segmented label:hover{border-color:#CFC9BF}
+.segmented input:checked+label{border-color:var(--ink);background:var(--ink);color:#fff}
+.segmented input:focus-visible+label{box-shadow:0 0 0 4px var(--accent-soft)}
+.form-actions{display:flex;gap:12px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:20px;margin-top:4px}
+
+/* Liste */
+.toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.toolbar .input-wrap{flex:1;min-width:220px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:48px;padding:0 16px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-weight:600;cursor:pointer;color:var(--ink-2);font-size:.88rem;transition:.15s}
+.chip:hover{border-color:#CFC9BF}
+.chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
+.list-count{font-size:.85rem;color:var(--muted);margin-bottom:14px}
+.people-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+.person{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;transition:transform .2s,box-shadow .2s;position:relative}
+.person:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.person-photo{aspect-ratio:4/3;background:#EFEBE4;overflow:hidden;display:grid;place-items:center;color:var(--muted)}
+.person-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.person-body{padding:16px 18px 18px}
+.person-body h4{font-size:1.02rem;font-weight:700;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person-meta{display:flex;align-items:center;gap:10px;font-size:.87rem;color:var(--ink-2)}
+.person-date{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.person-date svg{width:14px;height:14px}
+.person .del{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:10px;border:0;background:rgba(255,255,255,.94);color:var(--danger);display:grid;place-items:center;cursor:pointer;opacity:0;transition:.2s;box-shadow:var(--shadow-sm)}
+.person:hover .del,.person .del:focus-visible{opacity:1}
+@media (hover:none){.person .del{opacity:1}}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700}
+.badge-m{background:#E4EAF6;color:var(--navy)}
+.badge-f{background:var(--accent-soft);color:var(--accent-ink)}
+.badge-a{background:#F4ECDD;color:#8A6A2F}
+.empty-state{grid-column:1/-1;text-align:center;padding:64px 20px;background:#fff;border:1.5px dashed var(--line);border-radius:20px}
+.empty-state h3{font-size:1.15rem;margin-bottom:6px}
+.empty-state p{color:var(--muted);margin-bottom:20px}
+.skeleton{background:linear-gradient(90deg,#EFEBE4 25%,#F7F4EF 50%,#EFEBE4 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:18px;height:290px}
+@keyframes shimmer{to{background-position:-200% 0}}
+
+/* Analyse */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:22px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow-sm)}
+.stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--ink-2);font-size:.85rem;font-weight:600}
+.stat-ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center}
+.stat-value{font-size:2.3rem;font-weight:800;letter-spacing:-.03em;margin-top:14px;line-height:1}
+.stat-sub{font-size:.8rem;color:var(--muted);margin-top:8px}
+.stat.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.stat.dark .stat-top{color:#A9ADB9}
+.stat.dark .stat-ico{background:rgba(232,85,61,.18);color:var(--accent)}
+.charts{display:grid;grid-template-columns:1fr 1.4fr;gap:18px}
+.chart-wrap{position:relative;height:280px}
+
+/* Modale & toasts */
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,22,31,.45);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:60;padding:20px;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.modal{background:#fff;border-radius:20px;padding:28px;max-width:400px;width:100%;box-shadow:var(--shadow-lg);text-align:center;animation:rise .25s}
+.modal-icon{width:52px;height:52px;border-radius:14px;background:#FCE9E9;color:var(--danger);display:grid;place-items:center;margin:0 auto 16px}
+.modal h3{font-size:1.2rem;margin-bottom:6px}
+.modal p{color:var(--muted);margin-bottom:24px}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toasts{position:fixed;bottom:24px;right:24px;display:grid;gap:10px;z-index:70}
+.toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:14px 18px;border-radius:14px;box-shadow:var(--shadow-lg);font-weight:600;font-size:.92rem;max-width:380px;animation:slideIn .3s ease;transition:.3s}
+.toast.success svg{color:#4ADE80}.toast.error svg{color:#F87171}.toast.info svg{color:#93C5FD}
+.toast.out{opacity:0;transform:translateY(8px)}
+@keyframes slideIn{from{opacity:0;transform:translateY(12px)}}
+
+/* Responsive */
+@media(max-width:1100px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .charts{grid-template-columns:1fr}
+  .register-grid{grid-template-columns:1fr}
+  .dropzone{aspect-ratio:auto;min-height:260px}
+}
+@media(max-width:860px){
+  .auth{grid-template-columns:1fr}
+  .auth-brand{display:none}
+  .auth-card .mobile-brand{display:flex}
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;inset:auto 0 0 0;height:auto;padding:8px;z-index:40;flex-direction:row;gap:0;border-top:1px solid rgba(255,255,255,.07)}
+  .sidebar .brand,.user-box,.nav-label,.nav-count{display:none}
+  .nav{grid-template-columns:repeat(3,1fr)}
+  .nav-item{flex-direction:column;gap:4px;font-size:.72rem;padding:8px;text-align:center}
+  .main{padding:24px 18px 110px}
+  .topbar h1{font-size:1.6rem}
+  .date-chip{display:none}
+  .mobile-only{display:inline-flex!important}
+  .form-row{grid-template-columns:1fr}
+  .form-actions .btn{flex:1}
+  .toasts{left:16px;right:16px;bottom:92px}
+}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash"><span class="spinner"></span></div>
+
+<!-- ===================== AUTHENTIFICATION ===================== -->
+<section class="auth hidden" id="authScreen">
+  <div class="auth-brand">
+    <div class="brand"><span class="brand-mark">D</span> DataPerson</div>
+    <div class="auth-pitch">
+      <h1>Vos données, <em>clairement</em> organisées.</h1>
+      <p>Enregistrez, consultez et analysez vos fiches dans un espace privé et sécurisé.</p>
+      <ul class="features">
+        <li><i data-lucide="shield-check"></i> Fiches visibles par vous seul</li>
+        <li><i data-lucide="image"></i> Photos stockées de façon privée</li>
+        <li><i data-lucide="bar-chart-3"></i> Statistiques mises à jour en temps réel</li>
+      </ul>
+    </div>
+    <p class="auth-foot">© 2026 DataPerson</p>
+  </div>
+
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="brand mobile-brand"><span class="brand-mark">D</span> DataPerson</div>
+      <div class="tabs" id="authTabs">
+        <button type="button" data-mode="login" class="active">Connexion</button>
+        <button type="button" data-mode="signup">Inscription</button>
+      </div>
+      <h2 id="authTitle">Bon retour 👋</h2>
+      <p class="muted auth-sub" id="authSubtitle">Connectez-vous pour accéder à votre espace.</p>
+
+      <form class="auth-form" id="authForm" novalidate>
+        <div class="field" data-for="signup">
+          <label for="authName">Nom complet</label>
+          <div class="input-wrap"><i data-lucide="user"></i>
+            <input class="input" id="authName" autocomplete="name" placeholder="Awa Koné"></div>
+        </div>
+        <div class="field" data-for="login signup forgot">
+          <label for="authEmail">Adresse e-mail</label>
+          <div class="input-wrap"><i data-lucide="mail"></i>
+            <input class="input" id="authEmail" type="email" autocomplete="email" placeholder="vous@exemple.com"></div>
+        </div>
+        <div class="field" data-for="login signup recovery">
+          <label for="authPassword">Mot de passe</label>
+          <div class="input-wrap"><i data-lucide="lock"></i>
+            <input class="input" id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+            <button type="button" class="toggle-pass" data-toggle="authPassword" aria-label="Afficher le mot de passe"><i data-lucide="eye"></i></button>
+          </div>
+          <span class="hint" data-for="signup recovery">8 caractères minimum.</span>
+        </div>
+        <div class="field" data-for="signup recovery">
+          <label for="authConfirm">Confirmer le mot de passe</label>
+          <div class="input-wrap"><i data-lucide="lock-keyhole"></i>
+            <input class="input" id="authConfirm" type="password" autocomplete="new-password" placeholder="••••••••"></div>
+        </div>
+        <div class="auth-links" data-for="login"><a href="#" data-auth="forgot">Mot de passe oublié ?</a></div>
+        <button class="btn btn-primary btn-block" id="authSubmit" type="submit"></button>
+        <p class="auth-back" data-for="forgot"><a href="#" data-auth="login">← Retour à la connexion</a></p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== APPLICATION ===================== -->
+<div class="app hidden" id="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">D</span> DataPerson</div>
+    <nav class="nav">
+      <p class="nav-label">Menu</p>
+      <button class="nav-item active" data-page="register"><i data-lucide="user-plus"></i><span>Enregistrer</span></button>
+      <button class="nav-item" data-page="list"><i data-lucide="users"></i><span>Personnes</span><span class="nav-count" id="navCount">0</span></button>
+      <button class="nav-item" data-page="analysis"><i data-lucide="pie-chart"></i><span>Analyse</span></button>
+    </nav>
+    <div class="user-box">
+      <div class="user-avatar" id="userInitials">?</div>
+      <div class="user-meta"><strong id="userName">—</strong><small id="userEmail">—</small></div>
+      <button class="icon-btn" data-logout title="Se déconnecter" aria-label="Se déconnecter"><i data-lucide="log-out"></i></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="pageEyebrow">Enregistrer</p>
+        <h1 id="pageTitle">Nouvelle fiche</h1>
+      </div>
+      <div>
+        <span class="date-chip"><i data-lucide="calendar-days"></i><span id="today"></span></span>
+        <button class="btn btn-ghost mobile-only" data-logout aria-label="Se déconnecter"><i data-lucide="log-out"></i></button>
+      </div>
+    </header>
+
+    <!-- Page : Enregistrer -->
+    <section class="page active" id="page-register">
+      <form class="card" id="personForm" novalidate>
+        <div class="register-grid">
+          <div class="field">
+            <span class="label">Photo</span>
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choisir une photo">
+              <div id="dzEmpty">
+                <div class="dz-icon"><i data-lucide="image-plus"></i></div>
+                <strong>Glissez une photo ici</strong>
+                <small>ou cliquez pour parcourir · 5 Mo max.</small>
+              </div>
+              <img id="dzPreview" alt="Aperçu" hidden>
+              <span class="dz-change" id="dzChange" hidden><i data-lucide="refresh-cw"></i>Changer</span>
+            </div>
+            <input type="file" id="photo" accept="image/*" hidden>
+          </div>
+
+          <div class="form-fields">
+            <div class="field">
+              <label for="nom">Nom complet</label>
+              <div class="input-wrap"><i data-lucide="user"></i>
+                <input class="input" id="nom" placeholder="Ex : Jean Dupont" maxlength="120"></div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label for="age">Âge</label>
+                <div class="input-wrap"><i data-lucide="cake"></i>
+                  <input class="input" id="age" type="number" min="1" max="149" placeholder="Ex : 28"></div>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Sexe</span>
+              <div class="segmented">
+                <input type="radio" name="sexe" id="sx-m" value="Masculin"><label for="sx-m">Masculin</label>
+                <input type="radio" name="sexe" id="sx-f" value="Féminin"><label for="sx-f">Féminin</label>
+                <input type="radio" name="sexe" id="sx-a" value="Autre"><label for="sx-a">Autre</label>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="resetBtn">Effacer</button>
+              <button type="submit" class="btn btn-accent" id="submitBtn"><i data-lucide="check"></i>Enregistrer la fiche</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- Page : Liste -->
+    <section class="page" id="page-list">
+      <div class="toolbar">
+        <div class="input-wrap"><i data-lucide="search"></i>
+          <input class="input" id="search" placeholder="Rechercher par nom…"></div>
+        <div class="chips" id="chips">
+          <button class="chip active" data-filter="all">Tous</button>
+          <button class="chip" data-filter="Masculin">Masculin</button>
+          <button class="chip" data-filter="Féminin">Féminin</button>
+          <button class="chip" data-filter="Autre">Autre</button>
+        </div>
+      </div>
+      <p class="list-count" id="listCount"></p>
+      <div class="people-grid" id="peopleGrid"></div>
+    </section>
+
+    <!-- Page : Analyse -->
+    <section class="page" id="page-analysis">
+      <div class="stats">
+        <div class="stat dark">
+          <div class="stat-top">Total des fiches<span class="stat-ico"><i data-lucide="users"></i></span></div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-sub" id="statTotalSub">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-top">Âge moyen<span class="stat-ico" style="background:#F4ECDD;color:#8A6A2F"><i data-lucide="hourglass"></i></span></div>
+          <div class="stat-value" id="statAge">—</div>
+          <div class="stat-sub" id="statAgeSub">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-top">Hommes<span class="stat-ico" style="background:#E4EAF6;color:var(--navy)"><i data-lucide="user"></i></span></div>
+          <div class="stat-value" id="statM">0</div>
+          <div class="stat-sub" id="statMSub">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-top">Femmes<span class="stat-ico" style="background:var(--accent-soft);color:var(--accent-ink)"><i data-lucide="user"></i></span></div>
+          <div class="stat-value" id="statF">0</div>
+          <div class="stat-sub" id="statFSub">—</div>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="card">
+          <div class="card-head"><h3>Répartition par sexe</h3></div>
+          <div class="chart-wrap"><canvas id="chartSexe"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Répartition par tranche d'âge</h3></div>
+          <div class="chart-wrap"><canvas id="chartAge"></canvas></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modale de confirmation -->
+<div class="modal-backdrop hidden" id="confirmModal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-icon"><i data-lucide="trash-2"></i></div>
+    <h3>Supprimer cette fiche ?</h3>
+    <p id="confirmText"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel">Annuler</button>
+      <button class="btn btn-danger" id="confirmOk">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ================= CONFIGURATION =================
+const SUPABASE_URL = 'https://dbhicsolmbfbegsavzzh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiaGljc29sbWJmYmVnc2F2enpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2Njk3MTYsImV4cCI6MjEwODI0NTcxNn0.q33CINreTTU8q9j_mia3MIcy3VX_0UQDVENktmgMvg0';
+const BUCKET = 'persons-images';
+const MAX_SIZE = 5 * 1024 * 1024;
+const APP_URL = location.origin + location.pathname;
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const state = { user:null, persons:[], loaded:false, page:'register', filter:'all', search:'', recovering:false, charts:{} };
+let authMode = 'login';
+let selectedFile = null;
+
+// ================= UTILITAIRES =================
+const $  = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const icons = () => lucide.createIcons();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => new Date(d).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'});
+const SEXE_CLASS = { 'Masculin':'m', 'Féminin':'f', 'Autre':'a' };
+
+function toast(msg, type='success'){
+  const ico = { success:'check-circle-2', error:'alert-circle', info:'info' }[type];
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<i data-lucide="${ico}"></i><span>${esc(msg)}</span>`;
+  $('#toasts').appendChild(el); icons();
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 4000);
+}
+
+function setLoading(btn, on, text='Patientez…'){
+  if(on){
+    btn.dataset.html = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span>${text}`;
+  } else {
+    btn.disabled = false;
+    if(btn.dataset.html){ btn.innerHTML = btn.dataset.html; delete btn.dataset.html; }
+  }
+}
+
+function frError(err){
+  const m = (err?.message || '').toLowerCase();
+  if(m.includes('invalid login credentials')) return 'E-mail ou mot de passe incorrect.';
+  if(m.includes('email not confirmed')) return 'Confirmez d’abord votre e-mail (vérifiez votre boîte de réception).';
+  if(m.includes('already registered')) return 'Un compte existe déjà avec cet e-mail.';
+  if(m.includes('password should')) return 'Mot de passe trop faible (8 caractères minimum).';
+  if(m.includes('rate limit') || m.includes('too many')) return 'Trop de tentatives. Réessayez dans quelques minutes.';
+  if(m.includes('failed to fetch')) return 'Impossible de joindre le serveur. Vérifiez votre connexion.';
+  if(m.includes('row-level security')) return 'Action non autorisée pour ce compte.';
+  return err?.message || 'Une erreur est survenue.';
+}
+
+function confirmDialog(text){
+  return new Promise(resolve => {
+    const modal = $('#confirmModal');
+    $('#confirmText').textContent = text;
+    modal.classList.remove('hidden');
+    const close = val => { modal.classList.add('hidden'); ok.onclick = cancel.onclick = modal.onclick = null; resolve(val); };
+    const ok = $('#confirmOk'), cancel = $('#confirmCancel');
+    ok.onclick = () => close(true);
+    cancel.onclick = () => close(false);
+    modal.onclick = e => { if(e.target === modal) close(false); };
+  });
+}
+
+// ================= AUTHENTIFICATION =================
+const AUTH_TEXT = {
+  login:    { title:'Bon retour 👋',       sub:'Connectez-vous pour accéder à votre espace.',       btn:'Se connecter' },
+  signup:   { title:'Créer un compte',     sub:'Quelques secondes suffisent pour commencer.',        btn:'Créer mon compte' },
+  forgot:   { title:'Mot de passe oublié', sub:'Recevez un lien de réinitialisation par e-mail.',    btn:'Envoyer le lien' },
+  recovery: { title:'Nouveau mot de passe',sub:'Choisissez un nouveau mot de passe sécurisé.',       btn:'Mettre à jour' }
+};
+
+function setAuthMode(mode){
+  authMode = mode;
+  const t = AUTH_TEXT[mode];
+  $('#authTitle').textContent = t.title;
+  $('#authSubtitle').textContent = t.sub;
+  $('#authSubmit').innerHTML = `<span>${t.btn}</span><i data-lucide="arrow-right"></i>`;
+  $('#authTabs').hidden = !(mode === 'login' || mode === 'signup');
+  $$('#authTabs button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  $$('#authForm [data-for]').forEach(el => el.hidden = !el.dataset.for.split(' ').includes(mode));
+  $('#authPassword').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  icons();
+}
+
+$$('#authTabs button').forEach(b => b.addEventListener('click', () => setAuthMode(b.dataset.mode)));
+$$('[data-auth]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); setAuthMode(a.dataset.auth); }));
+$$('[data-toggle]').forEach(b => b.addEventListener('click', () => {
+  const input = $('#' + b.dataset.toggle);
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  $('#authConfirm').type = input.type;
+  b.innerHTML = `<i data-lucide="${show ? 'eye-off' : 'eye'}"></i>`; icons();
+}));
+
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#authSubmit');
+  const name = $('#authName').value.trim();
+  const email = $('#authEmail').value.trim();
+  const pass = $('#authPassword').value;
+  const confirm = $('#authConfirm').value;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  try{
+    if(authMode === 'login'){
+      if(!emailOk || !pass) return toast('Renseignez votre e-mail et votre mot de passe.', 'error');
+      setLoading(btn, true, 'Connexion…');
+      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if(error) throw error;
+    }
+    else if(authMode === 'signup'){
+      if(name.length < 2) return toast('Indiquez votre nom complet.', 'error');
+      if(!emailOk) return toast('Adresse e-mail invalide.', 'error');
+      if(pass.length < 8) return toast('Le mot de passe doit contenir au moins 8 caractères.', 'error');
+      if(pass !== confirm) return toast('Les mots de passe ne correspondent pas.', 'error');
+      setLoading(btn, true, 'Création du compte…');
+      const { data, error } = await sb.auth.signUp({
+        email, password: pass,
+        options: { data: { full_name: name }, emailRedirectTo: APP_URL }
+      });
+      if(error) throw error;
+      if(!data.session){
+        toast('Compte créé ! Confirmez votre e-mail, puis connectez-vous.', 'info');
+        authMode = 'login';
+      }
+    }
+    else if(authMode === 'forgot'){
+      if(!emailOk) return toast('Adresse e-mail invalide.', 'error');
+      setLoading(btn, true, 'Envoi…');
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+      if(error) throw error;
+      toast('Si un compte existe, un lien vous a été envoyé par e-mail.', 'info');
+      authMode = 'login';
+    }
+    else if(authMode === 'recovery'){
+      if(pass.length < 8) return toast('Le mot de passe doit contenir au moins 8 caractères.', 'error');
+      if(pass !== confirm) return toast('Les mots de passe ne correspondent pas.', 'error');
+      setLoading(btn, true, 'Mise à jour…');
+      const { data, error } = await sb.auth.updateUser({ password: pass });
+      if(error) throw error;
+      state.recovering = false;
+      history.replaceState(null, '', APP_URL);
+      toast('Mot de passe mis à jour.');
+      enterApp(data.user);
+    }
+  }catch(err){
+    toast(frError(err), 'error');
+  }finally{
+    btn.disabled = false;
+    delete btn.dataset.html;
+    if(!$('#authScreen').classList.contains('hidden')) setAuthMode(authMode);
+  }
+});
+
+$$('[data-logout]').forEach(b => b.addEventListener('click', async () => {
+  await sb.auth.signOut();
+}));
+
+function showAuth(mode='login'){
+  $('#splash').classList.add('hidden');
+  $('#app').classList.add('hidden');
+  $('#authScreen').classList.remove('hidden');
+  $('#authForm').reset();
+  state.user = null; state.persons = []; state.loaded = false;
+  Object.values(state.charts).forEach(c => c.destroy()); state.charts = {};
+  setAuthMode(mode);
+}
+
+function enterApp(user){
+  if(state.user && state.user.id === user.id){ state.user = user; return; }
+  state.user = user;
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
+  $('#userName').textContent = name;
+  $('#userEmail').textContent = user.email;
+  $('#userInitials').textContent = name.split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+  $('#splash').classList.add('hidden');
+  $('#authScreen').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  resetForm();
+  navigate('register');
+  loadPersons();
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  // setTimeout : évite d'appeler Supabase à l'intérieur du callback
+  setTimeout(() => {
+    if(event === 'PASSWORD_RECOVERY'){ state.recovering = true; showAuth('recovery'); return; }
+    if(state.recovering) return;
+    if(session?.user) enterApp(session.user);
+    else showAuth('login');
+  }, 0);
+});
+
+// ================= NAVIGATION =================
+const PAGES = {
+  register: { eyebrow:'Enregistrer', title:'Nouvelle fiche' },
+  list:     { eyebrow:'Répertoire',  title:'Mes personnes' },
+  analysis: { eyebrow:'Analyse',     title:'Tableau de bord' }
+};
+
+function navigate(page){
+  state.page = page;
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
+  $('#pageEyebrow').textContent = PAGES[page].eyebrow;
+  $('#pageTitle').textContent = PAGES[page].title;
+  if(page === 'list') renderList();
+  if(page === 'analysis') renderAnalysis();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button[data-page]');
+  if(b) navigate(b.dataset.page);
+});
+
+// ================= DONNÉES =================
+async function loadPersons(){
+  state.loaded = false;
+  if(state.page === 'list') renderList();
+  const { data, error } = await sb.from('personnes')
+    .select('id, nom, age, sexe, image_path, image_url, created_at')
+    .order('created_at', { ascending:false });
+
+  if(error){ toast(frError(error), 'error'); state.persons = []; state.loaded = true; renderAll(); return; }
+
+  const paths = data.filter(p => p.image_path).map(p => p.image_path);
+  const urls = {};
+  if(paths.length){
+    const { data: signed } = await sb.storage.from(BUCKET).createSignedUrls(paths, 3600);
+    (signed || []).forEach(s => { if(s.signedUrl) urls[s.path] = s.signedUrl; });
+  }
+  state.persons = data.map(p => ({ ...p, photo: urls[p.image_path] || p.image_url || '' }));
+  state.loaded = true;
+  renderAll();
+}
+
+function renderAll(){
+  $('#navCount').textContent = state.persons.length;
+  if(state.page === 'list') renderList();
+  if(state.page === 'analysis') renderAnalysis();
+}
+
+// ================= FORMULAIRE D'AJOUT =================
+const dz = $('#dropzone'), fileInput = $('#photo');
+dz.addEventListener('click', () => fileInput.click());
+dz.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileInput.click(); } });
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e => setFile(e.dataTransfer.files[0]));
+fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+function setFile(file){
+  if(!file) return;
+  if(!file.type.startsWith('image/')) return toast('Le fichier doit être une image.', 'error');
+  if(file.size > MAX_SIZE) return toast('Image trop lourde (5 Mo maximum).', 'error');
+  selectedFile = file;
+  dz.classList.add('has-file');
+  $('#dzPreview').src = URL.createObjectURL(file);
+  $('#dzPreview').hidden = false;
+  $('#dzChange').hidden = false;
+  $('#dzEmpty').hidden = true;
+}
+
+function resetForm(){
+  $('#personForm').reset();
+  selectedFile = null; fileInput.value = '';
+  dz.classList.remove('has-file');
+  $('#dzPreview').hidden = true; $('#dzPreview').removeAttribute('src');
+  $('#dzChange').hidden = true;
+  $('#dzEmpty').hidden = false;
+}
+$('#resetBtn').addEventListener('click', resetForm);
+
+$('#personForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const nom = $('#nom').value.trim();
+  const age = parseInt($('#age').value, 10);
+  const sexe = $('input[name="sexe"]:checked')?.value;
+
+  if(!selectedFile) return toast('Ajoutez une photo.', 'error');
+  if(nom.length < 2) return toast('Le nom est obligatoire.', 'error');
+  if(!(age > 0 && age < 150)) return toast('Âge invalide (entre 1 et 149).', 'error');
+  if(!sexe) return toast('Sélectionnez le sexe.', 'error');
+
+  const btn = $('#submitBtn');
+  setLoading(btn, true, 'Enregistrement…');
+  let path = null;
+  try{
+    const ext = (selectedFile.name.includes('.') ? selectedFile.name.split('.').pop() : 'jpg').toLowerCase();
+    const newPath = `${state.user.id}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const { error: upErr } = await sb.storage.from(BUCKET)
+      .upload(newPath, selectedFile, { contentType: selectedFile.type, upsert:false });
+    if(upErr) throw upErr;
+    path = newPath;
+
+    const { error: insErr } = await sb.from('personnes')
+      .insert({ nom, age, sexe, image_path: path, user_id: state.user.id });
+    if(insErr) throw insErr;
+
+    toast(`${nom} a été ajouté(e) avec succès.`);
+    resetForm();
+    loadPersons();
+  }catch(err){
+    if(path) await sb.storage.from(BUCKET).remove([path]); // pas d'image orpheline
+    toast(frError(err), 'error');
+  }finally{
+    setLoading(btn, false);
+  }
+});
+
+// ================= LISTE =================
+$('#search').addEventListener('input', e => { state.search = e.target.value; renderList(); });
+$('#chips').addEventListener('click', e => {
+  const c = e.target.closest('[data-filter]'); if(!c) return;
+  state.filter = c.dataset.filter;
+  $$('#chips .chip').forEach(x => x.classList.toggle('active', x === c));
+  renderList();
+});
+
+function emptyState(noData){
+  return `<div class="empty-state">
+    <div class="dz-icon"><i data-lucide="${noData ? 'users' : 'search-x'}"></i></div>
+    <h3>${noData ? 'Aucune fiche pour le moment' : 'Aucun résultat'}</h3>
+    <p>${noData ? 'Commencez par enregistrer votre première personne.' : 'Essayez un autre nom ou un autre filtre.'}</p>
+    ${noData ? '<button class="btn btn-accent" data-page="register"><i data-lucide="user-plus"></i>Ajouter une personne</button>' : ''}
+  </div>`;
+}
+
+function renderList(){
+  const grid = $('#peopleGrid');
+  if(!state.loaded){
+    $('#listCount').textContent = 'Chargement…';
+    grid.innerHTML = '<div class="skeleton"></div>'.repeat(6);
+    return;
+  }
+  const q = state.search.trim().toLowerCase();
+  const items = state.persons.filter(p =>
+    (state.filter === 'all' || p.sexe === state.filter) && p.nom.toLowerCase().includes(q));
+
+  $('#listCount').textContent = state.persons.length
+    ? `${items.length} fiche${items.length > 1 ? 's' : ''} affichée${items.length > 1 ? 's' : ''} sur ${state.persons.length}` : '';
+
+  if(!items.length){ grid.innerHTML = emptyState(!state.persons.length); icons(); return; }
+
+  grid.innerHTML = items.map(p => `
+    <article class="person">
+      <div class="person-photo">
+        ${p.photo ? `<img src="${esc(p.photo)}" alt="${esc(p.nom)}" loading="lazy">` : '<i data-lucide="image-off"></i>'}
+      </div>
+      <button class="del" data-del="${p.id}" aria-label="Supprimer ${esc(p.nom)}"><i data-lucide="trash-2"></i></button>
+      <div class="person-body">
+        <h4 title="${esc(p.nom)}">${esc(p.nom)}</h4>
+        <div class="person-meta">
+          <span class="badge badge-${SEXE_CLASS[p.sexe] || 'a'}">${esc(p.sexe)}</span>
+          <span>${Number(p.age)} ans</span>
+        </div>
+        <div class="person-date"><i data-lucide="calendar"></i>Ajouté le ${fmtDate(p.created_at)}</div>
+      </div>
+    </article>`).join('');
+  icons();
+}
+
+$('#peopleGrid').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  const p = state.persons.find(x => String(x.id) === b.dataset.del); if(!p) return;
+  if(!await confirmDialog(`La fiche de « ${p.nom} » et sa photo seront définitivement supprimées.`)) return;
+
+  const { error } = await sb.from('personnes').delete().eq('id', p.id);
+  if(error) return toast(frError(error), 'error');
+  if(p.image_path) await sb.storage.from(BUCKET).remove([p.image_path]);
+  state.persons = state.persons.filter(x => x.id !== p.id);
+  renderAll();
+  toast('Fiche supprimée.');
+});
+
+// ================= ANALYSE =================
+Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
+Chart.defaults.color = '#4A4F5E';
+
+function renderAnalysis(){
+  const d = state.persons, total = d.length;
+  const count = s => d.filter(p => p.sexe === s).length;
+  const m = count('Masculin'), f = count('Féminin'), a = count('Autre');
+  const pct = n => total ? `${Math.round(n / total * 100)} % du total` : 'Aucune donnée';
+  const ages = d.map(p => p.age);
+
+  $('#statTotal').textContent = total;
+  $('#statTotalSub').textContent = a ? `dont ${a} « Autre »` : 'fiches enregistrées';
+  $('#statAge').textContent = total ? (ages.reduce((s, x) => s + x, 0) / total).toFixed(1) : '—';
+  $('#statAgeSub').textContent = total ? `De ${Math.min(...ages)} à ${Math.max(...ages)} ans` : 'Aucune donnée';
+  $('#statM').textContent = m; $('#statMSub').textContent = pct(m);
+  $('#statF').textContent = f; $('#statFSub').textContent = pct(f);
+
+  Object.values(state.charts).forEach(c => c.destroy());
+
+  state.charts.sexe = new Chart($('#chartSexe'), {
+    type:'doughnut',
+    data:{ labels:['Masculin','Féminin','Autre'],
+      datasets:[{ data:[m, f, a], backgroundColor:['#2B4C8C','#E8553D','#C9A66B'], borderWidth:0, hoverOffset:6 }] },
+    options:{ maintainAspectRatio:false, cutout:'70%',
+      plugins:{ legend:{ position:'bottom', labels:{ usePointStyle:true, pointStyle:'circle', padding:18 } } } }
+  });
+
+  const tranches = { '0-17':0, '18-25':0, '26-35':0, '36-50':0, '51-65':0, '65+':0 };
+  d.forEach(p => {
+    if(p.age < 18) tranches['0-17']++;
+    else if(p.age <= 25) tranches['18-25']++;
+    else if(p.age <= 35) tranches['26-35']++;
+    else if(p.age <= 50) tranches['36-50']++;
+    else if(p.age <= 65) tranches['51-65']++;
+    else tranches['65+']++;
+  });
+
+  state.charts.age = new Chart($('#chartAge'), {
+    type:'bar',
+    data:{ labels:Object.keys(tranches),
+      datasets:[{ label:'Personnes', data:Object.values(tranches),
+        backgroundColor:'#14161F', hoverBackgroundColor:'#E8553D', borderRadius:8, maxBarThickness:46 }] },
+    options:{ maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, precision:0 }, grid:{ color:'#EFEBE4' }, border:{ display:false } },
+               x:{ grid:{ display:false }, border:{ display:false } } } }
+  });
+}
+
+// ================= INIT =================
+$('#today').textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+setAuthMode('login');
+icons();
+</script>
+</body>
+</html>
