@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataPerson – Les données de votre équipe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    --cream:#F6F4F0;--ink:#14161F;--ink2:#20232F;--ink3:#2C3040;
+    --coral:#E8553D;--coral-d:#CF4430;--coral-s:#FCE9E4;
+    --sand:#ECE6DB;--line:#E6E0D5;--muted:#6B6E7B;
+    --ok:#1F9D6B;--ok-s:#E3F4EC;--danger:#D23B2A;--danger-s:#FBE6E3;
+    --warn:#8A5A00;--warn-s:#FFF4DC;
+    --r:16px;--sh:0 1px 2px rgba(20,22,31,.04),0 8px 24px rgba(20,22,31,.06)
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .hidden{display:none!important}
+  button,input,select{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+  svg.lucide{width:18px;height:18px;flex-shrink:0}
+
+  /* Boutons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+  .btn-primary{background:var(--coral);color:#fff}.btn-primary:hover{background:var(--coral-d)}
+  .btn-dark{background:var(--ink);color:#fff}.btn-dark:hover{background:var(--ink3)}
+  .btn-ghost{background:#fff;border:1px solid var(--line)}.btn-ghost:hover{background:var(--sand)}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn:disabled{opacity:.65;cursor:wait}
+  .icon-btn{border:none;background:transparent;padding:8px;border-radius:10px;cursor:pointer;display:inline-flex;color:var(--muted);transition:.15s}
+  .icon-btn:hover{background:var(--sand);color:var(--ink)}
+  .link{background:none;border:none;color:var(--coral-d);font-weight:700;cursor:pointer;padding:0}
+  .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* Champs */
+  .field{margin-bottom:18px}
+  .field>label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}
+  .input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;transition:.15s}
+  .input:focus{outline:none;border-color:var(--coral);box-shadow:0 0 0 4px var(--coral-s)}
+  .pw{position:relative}.pw .input{padding-right:46px}
+  .pw .icon-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+  .err-text{color:var(--danger);font-size:13px;margin-top:6px;min-height:0}
+  .err-text:empty{display:none}
+  select.input{cursor:pointer}
+
+  /* Éléments communs */
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh)}
+  .badge{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+  .r-owner{background:var(--coral-s);color:var(--coral-d)}
+  .r-admin{background:#E9E7FB;color:#3F37A8}
+  .r-editor{background:#DFF3EE;color:#0D6B55}
+  .r-viewer{background:var(--sand);color:#5A5246}
+  .s-m{background:#E2EEF9;color:#1C5A93}.s-f{background:var(--coral-s);color:var(--coral-d)}.s-a{background:var(--sand);color:#5A5246}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.01em}
+  .logo-mark{width:38px;height:38px;border-radius:11px;background:var(--coral);display:grid;place-items:center;color:#fff}
+  .logo-mark svg.lucide{width:20px;height:20px}
+  .avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0}
+  .msg{font-size:14px;padding:11px 14px;border-radius:12px;margin-top:16px;line-height:1.5}
+  .msg.err{background:var(--danger-s);color:var(--danger)}.msg.ok{background:var(--ok-s);color:var(--ok)}
+
+  /* Chargement */
+  #loading{min-height:100vh;display:grid;place-items:center}
+  #loading .logo{animation:up .5s ease}
+
+  /* Authentification */
+  .auth{min-height:100vh;display:grid;grid-template-columns:1.05fr 1fr}
+  .auth-brand{background:var(--ink);color:#fff;padding:48px 56px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+  .auth-brand h1{font-size:42px;line-height:1.12;margin:0 0 16px;letter-spacing:-.03em;max-width:480px}
+  .auth-brand h1 em{font-style:normal;color:var(--coral)}
+  .auth-brand p{color:#B9BCC8;max-width:430px;line-height:1.65;margin:0 0 12px}
+  .perk{display:flex;gap:14px;align-items:flex-start;margin-top:22px}
+  .perk-ic{width:42px;height:42px;border-radius:12px;background:var(--ink3);display:grid;place-items:center;color:var(--coral);flex-shrink:0}
+  .perk b{display:block;margin-bottom:3px}.perk span{color:#9EA2B0;font-size:14px;line-height:1.5}
+  .blob{position:absolute;width:460px;height:460px;border-radius:50%;background:var(--coral);opacity:.13;right:-170px;top:-170px}
+  .blob2{position:absolute;width:260px;height:260px;border-radius:50%;border:40px solid var(--ink3);left:-120px;bottom:-120px}
+  .auth-form{display:grid;place-items:center;padding:32px 20px}
+  .auth-box{width:100%;max-width:410px;animation:up .4s ease}
+  .auth-box h2{font-size:30px;margin:0;letter-spacing:-.02em}
+  .auth-sub{color:var(--muted);margin:8px 0 0;line-height:1.5}
+  .mobile-logo{display:none;margin-bottom:28px}
+  .tabs{display:flex;background:var(--sand);padding:4px;border-radius:14px;margin:26px 0 22px}
+  .tab{flex:1;border:none;background:none;padding:10px;border-radius:11px;font-weight:700;cursor:pointer;color:var(--muted)}
+  .tab.active{background:#fff;color:var(--ink);box-shadow:var(--sh)}
+  .row-between{display:flex;justify-content:space-between;align-items:center;margin:-6px 0 20px}
+
+  /* Application */
+  .app{display:grid;grid-template-columns:268px 1fr;min-height:100vh}
+  .side{background:var(--ink);color:#fff;padding:24px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .ws{margin:26px 0 20px}
+  .ws label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8C90A0;display:block;margin:0 0 7px 4px;font-weight:700}
+  .ws select{width:100%;background:var(--ink2);border:1px solid var(--ink3);color:#fff;padding:11px 12px;border-radius:12px;cursor:pointer}
+  .nav button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:none;background:none;color:#B9BCC8;border-radius:12px;cursor:pointer;font-weight:600;margin-bottom:4px;text-align:left;transition:.15s}
+  .nav button:hover{background:var(--ink2);color:#fff}
+  .nav button.active{background:var(--coral);color:#fff}
+  .me{margin-top:auto;background:var(--ink2);border-radius:16px;padding:12px;display:flex;align-items:center;gap:10px}
+  .me .avatar{background:var(--coral);color:#fff}
+  .me-info{min-width:0;flex:1}
+  .me-name{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .me-mail{font-size:12px;color:#8C90A0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+  .me .icon-btn{color:#8C90A0}.me .icon-btn:hover{background:var(--ink3);color:#fff}
+  main{padding:36px 44px 64px;max-width:1200px;width:100%}
+  .ph{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+  .over{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--coral)}
+  .ph h2{font-size:32px;margin:6px 0 0;letter-spacing:-.03em}
+  .today{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:8px}
+  .banner{background:var(--warn-s);color:var(--warn);padding:13px 16px;border-radius:14px;display:flex;gap:10px;align-items:center;margin-bottom:22px;font-size:14px}
+  .view{animation:up .3s ease}
+
+  /* Enregistrer */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:30px}
+  .seg{display:flex;background:var(--sand);padding:4px;border-radius:14px;gap:4px}
+  .seg button{flex:1;border:none;background:none;padding:11px 8px;border-radius:11px;font-weight:700;cursor:pointer;color:var(--muted);transition:.15s}
+  .seg button.active{background:#fff;color:var(--ink);box-shadow:var(--sh)}
+  .drop{border:2px dashed var(--line);border-radius:16px;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;cursor:pointer;transition:.15s;background:var(--cream);position:relative;overflow:hidden}
+  .drop:hover,.drop.drag{border-color:var(--coral);background:var(--coral-s)}
+  .drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .drop .ic{width:56px;height:56px;border-radius:16px;background:#fff;display:grid;place-items:center;color:var(--coral);box-shadow:var(--sh);margin-bottom:6px}
+  .drop .ic svg.lucide{width:26px;height:26px}
+  .drop small{color:var(--muted);line-height:1.5}
+  .form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line);padding-top:22px}
+
+  /* Personnes */
+  .toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+  .search{position:relative;flex:1;min-width:220px}
+  .search svg.lucide{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .search .input{padding-left:42px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:#fff;padding:9px 15px;border-radius:99px;cursor:pointer;font-weight:700;font-size:13px;transition:.15s}
+  .chip:hover{background:var(--sand)}
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .count{color:var(--muted);font-size:14px;font-weight:500}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+  .pcard{overflow:hidden;transition:.2s}
+  .pcard:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(20,22,31,.1)}
+  .pimg{aspect-ratio:4/3;background:var(--sand);position:relative}
+  .pimg img{width:100%;height:100%;object-fit:cover;display:block}
+  .pimg .noimg{display:grid;place-items:center;height:100%;font-size:34px;font-weight:800;color:#B7AE9F}
+  .pimg .icon-btn{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.94);color:var(--danger);opacity:0;transition:.15s}
+  .pcard:hover .pimg .icon-btn,.pimg .icon-btn:focus-visible{opacity:1}
+  .pbody{padding:15px 16px 16px}
+  .pname{font-weight:800;font-size:16px;margin-bottom:9px}
+  .pmeta{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .pby{font-size:12px;color:var(--muted);margin-top:12px;padding-top:11px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}
+  .skel{background:linear-gradient(90deg,var(--sand),#F3EEE6,var(--sand));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:var(--r);height:290px}
+  @keyframes sk{to{background-position:-200% 0}}
+  .empty{text-align:center;padding:64px 20px}
+  .empty .ic{width:68px;height:68px;border-radius:20px;background:var(--coral-s);color:var(--coral);display:grid;place-items:center;margin:0 auto 18px}
+  .empty .ic svg.lucide{width:30px;height:30px}
+  .empty h3{margin:0 0 6px;font-size:19px}.empty p{color:var(--muted);margin:0 0 20px}
+
+  /* Analyse */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+  .stat{padding:20px 22px}
+  .stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;font-weight:700}
+  .stat-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--coral-s);color:var(--coral)}
+  .stat-v{font-size:32px;font-weight:800;margin-top:10px;letter-spacing:-.03em}
+  .stat-s{font-size:13px;color:var(--muted);margin-top:2px}
+  .charts{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+  .charts .card{padding:24px}
+  .charts h3{margin:0 0 18px;font-size:16px}
+  .chart-box{position:relative;height:260px}
+
+  /* Équipe */
+  .team{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:18px}
+  .sec{padding:24px}
+  .sec h3{margin:0 0 4px;font-size:17px}
+  .sec .sub{color:var(--muted);font-size:14px;margin:0 0 18px;line-height:1.5}
+  .mrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+  .mrow:first-child{border-top:none}
+  .mrow .info{flex:1;min-width:0}
+  .mrow .n{font-weight:700;font-size:14px}
+  .mrow .e{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mrow select{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
+  .inv-row{display:flex;gap:8px;flex-wrap:wrap}
+  .inv-row .input{flex:1;min-width:180px}
+  .inv-row select.input{flex:0 0 auto;width:auto}
+  .share{background:var(--cream);border-radius:14px;padding:14px 16px;font-size:13px;color:var(--muted);margin-top:16px;display:flex;gap:12px;align-items:center;line-height:1.5}
+  .share b{color:var(--ink)}
+  .role-line{display:flex;gap:12px;align-items:flex-start;padding:10px 0;font-size:14px;color:var(--muted);line-height:1.45}
+  .role-line .badge{flex-shrink:0;min-width:100px;justify-content:center}
+
+  /* Modale et notifications */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,22,31,.5);display:grid;place-items:center;padding:20px;z-index:50;animation:up .2s}
+  .modal{max-width:420px;width:100%;padding:28px}
+  .modal h3{margin:0 0 8px;font-size:19px}.modal p{color:var(--muted);margin:0 0 24px;line-height:1.55}
+  .modal .acts{display:flex;gap:10px;justify-content:flex-end}
+  #toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;z-index:60}
+  .toast{background:var(--ink);color:#fff;padding:13px 16px;border-radius:14px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(20,22,31,.25);animation:up .25s;font-size:14px;max-width:360px}
+  .toast.err{background:var(--danger)}
+  .toast.ok svg.lucide{color:#6EE0B0}
+
+  /* Mobile */
+  .mobile-top,.mobile-nav{display:none}
+  @media(max-width:960px){
+    .auth{grid-template-columns:1fr}.auth-brand{display:none}.mobile-logo{display:flex}
+    .app{grid-template-columns:1fr}.side{display:none}
+    main{padding:22px 16px 110px}
+    .mobile-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--ink);color:#fff;position:sticky;top:0;z-index:40}
+    .mobile-top .logo{font-size:17px}.mobile-top .logo-mark{width:32px;height:32px}
+    .mobile-top select{background:var(--ink2);color:#fff;border:1px solid var(--ink3);border-radius:10px;padding:8px;max-width:45%}
+    .mobile-top .icon-btn{color:#B9BCC8}
+    .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--ink);padding:8px 8px calc(8px + env(safe-area-inset-bottom));justify-content:space-around;z-index:40}
+    .mobile-nav button{background:none;border:none;color:#B9BCC8;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:7px 12px;border-radius:12px;cursor:pointer}
+    .mobile-nav button.active{color:#fff;background:var(--coral)}
+    .form-grid,.team,.charts{grid-template-columns:1fr}
+    .form-grid{padding:20px;gap:8px}
+    .stats{grid-template-columns:1fr 1fr}
+    .ph h2{font-size:26px}
+    .pimg .icon-btn{opacity:1}
+    #toasts{left:16px;right:16px;bottom:90px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ CHARGEMENT ============ -->
+<div id="loading">
+  <div class="logo"><div class="logo-mark"><i data-lucide="users-round"></i></div>DataPerson</div>
+</div>
+
+<!-- ============ AUTHENTIFICATION ============ -->
+<div id="auth" class="auth hidden">
+  <aside class="auth-brand">
+    <div class="blob"></div><div class="blob2"></div>
+    <div class="logo" style="position:relative"><div class="logo-mark"><i data-lucide="users-round"></i></div>DataPerson</div>
+    <div style="position:relative">
+      <h1>Les données de votre équipe, <em>au même endroit.</em></h1>
+      <p>Enregistrez des fiches, invitez vos collègues et suivez vos statistiques, en toute sécurité.</p>
+      <div class="perk"><div class="perk-ic"><i data-lucide="shield-check"></i></div><div><b>Sécurisé</b><span>Chaque entreprise ne voit que ses propres données.</span></div></div>
+      <div class="perk"><div class="perk-ic"><i data-lucide="users"></i></div><div><b>Pensé pour l'équipe</b><span>Invitez vos collègues et donnez à chacun le bon rôle.</span></div></div>
+      <div class="perk"><div class="perk-ic"><i data-lucide="chart-pie"></i></div><div><b>Analyses claires</b><span>Âges, répartition, tendances : tout en un coup d'œil.</span></div></div>
+    </div>
+    <small style="color:#6F7384;position:relative">© DataPerson</small>
+  </aside>
+
+  <div class="auth-form">
+    <div class="auth-box">
+      <div class="logo mobile-logo"><div class="logo-mark"><i data-lucide="users-round"></i></div>DataPerson</div>
+      <h2 id="auth-title">Bon retour</h2>
+      <p class="auth-sub" id="auth-sub">Connectez-vous pour accéder à votre espace.</p>
+
+      <div class="tabs" id="tabs" role="tablist">
+        <button class="tab active" data-tab="login" role="tab" onclick="showTab('login')">Connexion</button>
+        <button class="tab" data-tab="signup" role="tab" onclick="showTab('signup')">Inscription</button>
+      </div>
+
+      <form id="form-login" novalidate>
+        <div class="field"><label for="li-email">Email</label>
+          <input class="input" id="li-email" type="email" autocomplete="email" placeholder="vous@entreprise.ci"></div>
+        <div class="field"><label for="li-pw">Mot de passe</label>
+          <div class="pw"><input class="input" id="li-pw" type="password" autocomplete="current-password" placeholder="Votre mot de passe">
+          <button type="button" class="icon-btn" data-toggle="li-pw" aria-label="Afficher le mot de passe"><i data-lucide="eye"></i></button></div></div>
+        <div class="row-between"><span></span><button type="button" class="link" onclick="showTab('reset')">Mot de passe oublié ?</button></div>
+        <button class="btn btn-primary" id="btn-login" style="width:100%">Se connecter</button>
+      </form>
+
+      <form id="form-signup" class="hidden" novalidate>
+        <div class="field"><label for="su-name">Nom complet</label>
+          <input class="input" id="su-name" autocomplete="name" placeholder="Awa Koné"></div>
+        <div class="field"><label for="su-email">Email professionnel</label>
+          <input class="input" id="su-email" type="email" autocomplete="email" placeholder="vous@entreprise.ci"></div>
+        <div class="field"><label for="su-pw">Mot de passe</label>
+          <div class="pw"><input class="input" id="su-pw" type="password" autocomplete="new-password" placeholder="8 caractères minimum">
+          <button type="button" class="icon-btn" data-toggle="su-pw" aria-label="Afficher le mot de passe"><i data-lucide="eye"></i></button></div></div>
+        <div class="field"><label for="su-pw2">Confirmer le mot de passe</label>
+          <input class="input" id="su-pw2" type="password" autocomplete="new-password" placeholder="Retapez le mot de passe"></div>
+        <button class="btn btn-primary" id="btn-signup" style="width:100%">Créer mon compte</button>
+      </form>
+
+      <form id="form-reset" class="hidden" novalidate>
+        <div class="field" style="margin-top:26px"><label for="rs-email">Email du compte</label>
+          <input class="input" id="rs-email" type="email" autocomplete="email" placeholder="vous@entreprise.ci"></div>
+        <button class="btn btn-primary" id="btn-reset" style="width:100%">Recevoir le lien</button>
+        <div style="text-align:center;margin-top:18px"><button type="button" class="link" onclick="showTab('login')">← Retour à la connexion</button></div>
+      </form>
+
+      <div id="auth-msg" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ NOUVEAU MOT DE PASSE ============ -->
+<div id="recovery" class="auth-form hidden" style="min-height:100vh">
+  <div class="auth-box card" style="padding:34px">
+    <div class="logo" style="margin-bottom:26px"><div class="logo-mark"><i data-lucide="lock"></i></div>DataPerson</div>
+    <h2>Nouveau mot de passe</h2>
+    <p class="auth-sub" style="margin-bottom:24px">Choisissez un mot de passe d'au moins 8 caractères.</p>
+    <form id="form-recovery" novalidate>
+      <div class="field"><label for="np-pw">Nouveau mot de passe</label>
+        <input class="input" id="np-pw" type="password" autocomplete="new-password"></div>
+      <div class="field"><label for="np-pw2">Confirmer</label>
+        <input class="input" id="np-pw2" type="password" autocomplete="new-password"></div>
+      <button class="btn btn-primary" id="btn-np" style="width:100%">Enregistrer</button>
+    </form>
+    <div id="rec-msg" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- ============ APPLICATION ============ -->
+<div id="app" class="hidden">
+  <div class="mobile-top">
+    <div class="logo"><div class="logo-mark"><i data-lucide="users-round"></i></div>DataPerson</div>
+    <select id="ws-select-m" aria-label="Espace de travail" onchange="switchWs(this.value)"></select>
+    <button class="icon-btn" aria-label="Se déconnecter" onclick="logout()"><i data-lucide="log-out"></i></button>
+  </div>
+
+  <div class="app">
+    <aside class="side">
+      <div class="logo"><div class="logo-mark"><i data-lucide="users-round"></i></div>DataPerson</div>
+      <div class="ws"><label for="ws-select">Espace de travail</label>
+        <select id="ws-select" onchange="switchWs(this.value)"></select></div>
+      <nav class="nav" aria-label="Menu principal">
+        <button data-view="add" onclick="go('add')"><i data-lucide="user-plus"></i>Enregistrer</button>
+        <button data-view="people" onclick="go('people')"><i data-lucide="id-card"></i>Personnes</button>
+        <button data-view="stats" onclick="go('stats')"><i data-lucide="chart-pie"></i>Analyse</button>
+        <button data-view="team" onclick="go('team')"><i data-lucide="users"></i>Équipe</button>
+      </nav>
+      <div class="me">
+        <div class="avatar" id="me-av"></div>
+        <div class="me-info"><div class="me-name" id="me-name"></div><div class="me-mail" id="me-mail"></div><span class="badge" id="me-role"></span></div>
+        <button class="icon-btn" aria-label="Se déconnecter" onclick="logout()"><i data-lucide="log-out"></i></button>
+      </div>
+    </aside>
+
+    <main>
+      <div class="ph">
+        <div><div class="over" id="ph-over"></div><h2 id="ph-title"></h2></div>
+        <div class="today"><i data-lucide="calendar"></i><span id="today"></span></div>
+      </div>
+
+      <div class="banner hidden" id="ro-banner"><i data-lucide="eye"></i><span>Vous êtes <b>Lecteur</b> dans cet espace : vous pouvez consulter les données, sans les modifier.</span></div>
+
+      <!-- Enregistrer -->
+      <section id="view-add" class="view hidden">
+        <form class="card form-grid" id="add-form" novalidate>
+          <div>
+            <div class="field"><label for="f-nom">Nom complet</label>
+              <input class="input" id="f-nom" maxlength="120" placeholder="Kouassi Jean"><div class="err-text" id="e-nom"></div></div>
+            <div class="field"><label for="f-age">Âge</label>
+              <input class="input" id="f-age" type="number" min="1" max="149" inputmode="numeric" placeholder="34"><div class="err-text" id="e-age"></div></div>
+            <div class="field"><label id="l-sexe">Sexe</label>
+              <div class="seg" id="f-sexe" role="radiogroup" aria-labelledby="l-sexe">
+                <button type="button" role="radio" aria-checked="false" data-v="Masculin">Masculin</button>
+                <button type="button" role="radio" aria-checked="false" data-v="Féminin">Féminin</button>
+                <button type="button" role="radio" aria-checked="false" data-v="Autre">Autre</button>
+              </div><div class="err-text" id="e-sexe"></div></div>
+          </div>
+          <div class="field" style="margin:0">
+            <label id="l-photo">Photo</label>
+            <div class="drop" id="drop" tabindex="0" role="button" aria-labelledby="l-photo">
+              <div class="ic"><i data-lucide="image-plus"></i></div>
+              <b>Glissez une photo ici</b>
+              <small>ou cliquez pour parcourir<br>JPG, PNG, WebP ou GIF · 5 Mo max</small>
+              <img id="preview" class="hidden" alt="Aperçu de la photo">
+            </div>
+            <input type="file" id="f-photo" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden">
+            <div class="err-text" id="e-photo"></div>
+            <button type="button" class="link hidden" id="rm-photo" style="margin-top:10px">Retirer la photo</button>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" onclick="resetForm()">Effacer</button>
+            <button class="btn btn-primary" id="btn-add"><i data-lucide="check"></i>Enregistrer la fiche</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Personnes -->
+      <section id="view-people" class="view hidden">
+        <div class="toolbar">
+          <div class="search"><i data-lucide="search"></i><input class="input" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un nom" oninput="renderPeople()"></div>
+          <div class="chips" id="chips">
+            <button class="chip active" data-f="all">Tous</button>
+            <button class="chip" data-f="Masculin">Masculin</button>
+            <button class="chip" data-f="Féminin">Féminin</button>
+            <button class="chip" data-f="Autre">Autre</button>
+          </div>
+          <span class="count" id="count"></span>
+        </div>
+        <div id="people"></div>
+      </section>
+
+      <!-- Analyse -->
+      <section id="view-stats" class="view hidden">
+        <div id="stats-empty" class="hidden"></div>
+        <div id="stats-content">
+          <div class="stats" id="stat-cards"></div>
+          <div class="charts">
+            <div class="card"><h3>Répartition par sexe</h3><div class="chart-box"><canvas id="ch-sexe"></canvas></div></div>
+            <div class="card"><h3>Tranches d'âge</h3><div class="chart-box"><canvas id="ch-age"></canvas></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Équipe -->
+      <section id="view-team" class="view hidden">
+        <div class="team">
+          <div class="col">
+            <div class="card sec" id="invite-card">
+              <h3>Inviter un collègue</h3>
+              <p class="sub">Saisissez l'email de votre collègue et choisissez son rôle.</p>
+              <form id="invite-form" class="inv-row" novalidate>
+                <input class="input" id="inv-email" type="email" placeholder="collegue@entreprise.ci" aria-label="Email du collègue">
+                <select class="input" id="inv-role" aria-label="Rôle">
+                  <option value="viewer">Lecteur</option>
+                  <option value="editor">Éditeur</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button class="btn btn-primary" id="btn-invite"><i data-lucide="send"></i>Inviter</button>
+              </form>
+              <div class="err-text" id="e-inv"></div>
+              <div class="share">
+                <i data-lucide="info"></i>
+                <span>Votre collègue doit créer son compte avec <b>cet email</b>. Il rejoindra votre espace automatiquement.</span>
+                <button type="button" class="btn btn-ghost" style="padding:9px 12px" onclick="copyLink()"><i data-lucide="copy"></i>Copier le lien</button>
+              </div>
+              <h4 style="margin:24px 0 2px;font-size:14px">Invitations en attente</h4>
+              <div id="pending"></div>
+            </div>
+
+            <div class="card sec" id="ws-card">
+              <h3>Nom de l'espace</h3>
+              <p class="sub">Visible par tous les membres, par exemple le nom de votre entreprise.</p>
+              <form id="ws-form" class="inv-row" novalidate>
+                <input class="input" id="ws-name" maxlength="80" aria-label="Nom de l'espace">
+                <button class="btn btn-dark" id="btn-ws">Renommer</button>
+              </form>
+            </div>
+
+            <div class="card sec">
+              <h3>Les rôles</h3>
+              <p class="sub" style="margin-bottom:6px">Ce que chacun peut faire dans l'espace.</p>
+              <div class="role-line"><span class="badge r-owner">Propriétaire</span>Gère tout, y compris le nom de l'espace.</div>
+              <div class="role-line"><span class="badge r-admin">Admin</span>Invite des collègues et gère les rôles.</div>
+              <div class="role-line"><span class="badge r-editor">Éditeur</span>Ajoute et supprime des fiches.</div>
+              <div class="role-line"><span class="badge r-viewer">Lecteur</span>Consulte les fiches et les statistiques.</div>
+            </div>
+          </div>
+
+          <div class="card sec">
+            <h3>Membres <span class="count" id="m-count"></span></h3>
+            <p class="sub">Toutes ces personnes voient les mêmes données.</p>
+            <div id="members"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Menu mobile">
+    <button data-view="add" onclick="go('add')"><i data-lucide="user-plus"></i>Ajouter</button>
+    <button data-view="people" onclick="go('people')"><i data-lucide="id-card"></i>Personnes</button>
+    <button data-view="stats" onclick="go('stats')"><i data-lucide="chart-pie"></i>Analyse</button>
+    <button data-view="team" onclick="go('team')"><i data-lucide="users"></i>Équipe</button>
+  </nav>
+</div>
+
+<div id="modal-root"></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+// ====== À REMPLACER si vous utilisez un autre projet Supabase ======
+const SUPABASE_URL = 'https://dbhicsolmbfbegsavzzh.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRiaGljc29sbWJmYmVnc2F2enpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2Njk3MTYsImV4cCI6MjEwODI0NTcxNn0.q33CINreTTU8q9j_mia3MIcy3VX_0UQDVENktmgMvg0'
+// ===================================================================
+
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const APP_URL = location.origin + location.pathname
+const BUCKET = 'persons-images'
+const MAX_SIZE = 5 * 1024 * 1024
+const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const ROLE = { owner: 'Propriétaire', admin: 'Admin', editor: 'Éditeur', viewer: 'Lecteur' }
+const SEXK = { 'Masculin': 'm', 'Féminin': 'f', 'Autre': 'a' }
+const VIEWS = {
+  add: ['Nouvelle fiche', 'Enregistrer une personne'],
+  people: ['Base de données', 'Personnes'],
+  stats: ['Tableau de bord', 'Analyse'],
+  team: ['Collaboration', 'Équipe']
+}
+const COLORS = { coral: '#E8553D', ink: '#14161F', sand: '#D9CFBF' }
+
+let user = null, recovering = false
+let wsList = [], ws = null, role = null, view = null
+let people = [], urls = {}, peopleLoaded = false, filter = 'all'
+let members = [], file = null, sexe = null, charts = {}
+
+// ---------- Utilitaires ----------
+const $ = id => document.getElementById(id)
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const icons = () => window.lucide && window.lucide.createIcons()
+const initials = n => String(n || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
+const fmtDate = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+const canEdit = () => ['owner', 'admin', 'editor'].includes(role)
+const canAdmin = () => ['owner', 'admin'].includes(role)
+
+if (window.Chart) {
+  Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif"
+  Chart.defaults.color = '#6B6E7B'
+}
+
+function show(screen) {
+  ['loading', 'auth', 'recovery', 'app'].forEach(s => $(s).classList.toggle('hidden', s !== screen))
+  icons()
+}
+
+function fr(err) {
+  const m = err?.message || String(err)
+  if (/Invalid login credentials/i.test(m)) return 'Email ou mot de passe incorrect.'
+  if (/Email not confirmed/i.test(m)) return "Votre email n'est pas encore confirmé. Cliquez sur le lien reçu par email."
+  if (/already registered|already been registered/i.test(m)) return 'Un compte existe déjà avec cet email.'
+  if (/rate limit|For security purposes|too many/i.test(m)) return 'Trop de tentatives. Patientez quelques minutes avant de réessayer.'
+  if (/Failed to fetch|NetworkError|network/i.test(m)) return 'Connexion impossible. Vérifiez votre accès à Internet.'
+  if (/Password should be at least/i.test(m)) return 'Le mot de passe doit contenir au moins 8 caractères.'
+  if (/row-level security|permission denied|Accès refusé|Unauthorized/i.test(m)) return "Vous n'avez pas les droits pour cette action."
+  if (/mime type|not supported/i.test(m)) return 'Format de photo non accepté.'
+  if (/exceeded the maximum allowed size|Payload too large/i.test(m)) return 'La photo dépasse 5 Mo.'
+  return m
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div')
+  el.className = 'toast ' + type
+  const ic = type === 'err' ? 'circle-alert' : type === 'ok' ? 'circle-check' : 'info'
+  el.innerHTML = `<i data-lucide="${ic}"></i><span>${esc(msg)}</span>`
+  $('toasts').appendChild(el)
+  icons()
+  setTimeout(() => el.remove(), 4000)
+}
+
+async function busy(btn, fn) {
+  const html = btn.innerHTML
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin"></span>Patientez…'
+  try { return await fn() }
+  finally { btn.disabled = false; btn.innerHTML = html; icons() }
+}
+
+function setErr(id, msg) { $(id).textContent = msg || ''; return !!msg }
+
+function confirmModal({ title, text, okLabel = 'Confirmer' }) {
+  return new Promise(resolve => {
+    const root = $('modal-root')
+    root.innerHTML = `<div class="modal-bg" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <div class="card modal"><h3 id="m-title">${esc(title)}</h3><p>${esc(text)}</p>
+      <div class="acts"><button class="btn btn-ghost" id="m-no">Annuler</button>
+      <button class="btn btn-danger" id="m-ok">${esc(okLabel)}</button></div></div></div>`
+    const onKey = e => { if (e.key === 'Escape') close(false) }
+    const close = v => { root.innerHTML = ''; document.removeEventListener('keydown', onKey); resolve(v) }
+    document.addEventListener('keydown', onKey)
+    $('m-no').onclick = () => close(false)
+    $('m-ok').onclick = () => close(true)
+    root.querySelector('.modal-bg').onclick = e => { if (e.target.classList.contains('modal-bg')) close(false) }
+    $('m-no').focus()
+  })
+}
+
+function emptyHtml(icon, title, text, action = '') {
+  return `<div class="card empty"><div class="ic"><i data-lucide="${icon}"></i></div>
+    <h3>${title}</h3><p>${text}</p>${action}</div>`
+}
+
+// ---------- Authentification ----------
+const TITLES = {
+  login: ['Bon retour', 'Connectez-vous pour accéder à votre espace.'],
+  signup: ['Créer un compte', "Votre espace d'équipe est prêt en quelques secondes."],
+  reset: ['Mot de passe oublié', 'Recevez un lien pour choisir un nouveau mot de passe.']
+}
+
+function showTab(tab) {
+  ['login', 'signup', 'reset'].forEach(t => $('form-' + t).classList.toggle('hidden', t !== tab))
+  $('tabs').classList.toggle('hidden', tab === 'reset')
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab))
+  $('auth-title').textContent = TITLES[tab][0]
+  $('auth-sub').textContent = TITLES[tab][1]
+  authMsg('')
+}
+
+function authMsg(text, type = 'err') {
+  $('auth-msg').innerHTML = text ? `<div class="msg ${type}">${esc(text)}</div>` : ''
+}
+
+document.querySelectorAll('[data-toggle]').forEach(b => {
+  b.addEventListener('click', () => {
+    const input = $(b.dataset.toggle)
+    const hidden = input.type === 'password'
+    input.type = hidden ? 'text' : 'password'
+    b.setAttribute('aria-label', hidden ? 'Masquer le mot de passe' : 'Afficher le mot de passe')
+    b.innerHTML = `<i data-lucide="${hidden ? 'eye-off' : 'eye'}"></i>`
+    icons()
+  })
+})
+
+$('form-login').addEventListener('submit', e => {
+  e.preventDefault()
+  const email = $('li-email').value.trim(), pw = $('li-pw').value
+  if (!emailOk(email)) return authMsg('Saisissez une adresse email valide.')
+  if (!pw) return authMsg('Saisissez votre mot de passe.')
+  busy($('btn-login'), async () => {
+    const { error } = await sb.auth.signInWithPassword({ email, password: pw })
+    if (error) authMsg(fr(error))
+  })
+})
+
+$('form-signup').addEventListener('submit', e => {
+  e.preventDefault()
+  const name = $('su-name').value.trim(), email = $('su-email').value.trim()
+  const pw = $('su-pw').value, pw2 = $('su-pw2').value
+  if (name.length < 2) return authMsg('Saisissez votre nom complet.')
+  if (!emailOk(email)) return authMsg('Saisissez une adresse email valide.')
+  if (pw.length < 8) return authMsg('Le mot de passe doit contenir au moins 8 caractères.')
+  if (pw !== pw2) return authMsg('Les deux mots de passe ne correspondent pas.')
+  busy($('btn-signup'), async () => {
+    const { data, error } = await sb.auth.signUp({
+      email, password: pw,
+      options: { data: { full_name: name }, emailRedirectTo: APP_URL }
+    })
+    if (error) return authMsg(fr(error))
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0)
+      return authMsg('Un compte existe déjà avec cet email.')
+    if (!data.session) {
+      $('form-signup').reset()
+      authMsg('Compte créé. Vérifiez votre boîte mail (et vos spams), cliquez sur le lien de confirmation, puis connectez-vous.', 'ok')
+    }
+  })
+})
+
+$('form-reset').addEventListener('submit', e => {
+  e.preventDefault()
+  const email = $('rs-email').value.trim()
+  if (!emailOk(email)) return authMsg('Saisissez une adresse email valide.')
+  busy($('btn-reset'), async () => {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL })
+    if (error) return authMsg(fr(error))
+    authMsg("Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé.", 'ok')
+  })
+})
+
+$('form-recovery').addEventListener('submit', e => {
+  e.preventDefault()
+  const pw = $('np-pw').value, pw2 = $('np-pw2').value
+  const msg = t => $('rec-msg').innerHTML = `<div class="msg err">${esc(t)}</div>`
+  if (pw.length < 8) return msg('Le mot de passe doit contenir au moins 8 caractères.')
+  if (pw !== pw2) return msg('Les deux mots de passe ne correspondent pas.')
+  busy($('btn-np'), async () => {
+    const { data, error } = await sb.auth.updateUser({ password: pw })
+    if (error) return msg(fr(error))
+    recovering = false
+    user = data.user
+    toast('Mot de passe mis à jour', 'ok')
+    boot()
+  })
+})
+
+async function logout() {
+  await sb.auth.signOut()
+  localStorage.removeItem('dp_ws')
+  location.replace(APP_URL)
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') { recovering = true; show('recovery'); return }
+  if (recovering) return
+  if (session?.user) {
+    if (!user) { user = session.user; setTimeout(boot, 0) }
+  } else {
+    user = null
+    show('auth')
+  }
+})
+
+// ---------- Démarrage ----------
+async function boot() {
+  show('loading')
+  const { error } = await sb.rpc('dp_bootstrap')
+  if (error) toast(fr(error), 'err')
+  history.replaceState(null, '', APP_URL)
+
+  const name = user.user_metadata?.full_name || user.email.split('@')[0]
+  $('me-name').textContent = name
+  $('me-mail').textContent = user.email
+  $('me-av').textContent = initials(name)
+  $('today').textContent = cap(new Date().toLocaleDateString('fr-FR',
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+
+  await loadWorkspaces()
+  show('app')
+}
+
+async function loadWorkspaces(preferId) {
+  const { data, error } = await sb.from('workspace_members')
+    .select('role, created_at, workspaces(id, name)')
+    .eq('user_id', user.id).order('created_at')
+  if (error) return toast(fr(error), 'err')
+  wsList = (data || []).filter(m => m.workspaces)
+  const opts = wsList.map(m => `<option value="${m.workspaces.id}">${esc(m.workspaces.name)}</option>`).join('')
+  $('ws-select').innerHTML = opts
+  $('ws-select-m').innerHTML = opts
+  const saved = preferId || localStorage.getItem('dp_ws')
+  const id = wsList.some(m => m.workspaces.id === saved) ? saved : wsList[0]?.workspaces.id
+  if (id) await switchWs(id)
+}
+
+async function switchWs(id) {
+  const m = wsList.find(x => x.workspaces.id === id)
+  if (!m) return
+  ws = id
+  role = m.role
+  localStorage.setItem('dp_ws', id)
+  $('ws-select').value = id
+  $('ws-select-m').value = id
+  $('me-role').textContent = ROLE[role]
+  $('me-role').className = 'badge r-' + role
+  $('ro-banner').classList.toggle('hidden', canEdit())
+  document.querySelectorAll('[data-view="add"]').forEach(b => b.classList.toggle('hidden', !canEdit()))
+  $('invite-card').classList.toggle('hidden', !canAdmin())
+  $('ws-card').classList.toggle('hidden', role !== 'owner')
+  $('ws-name').value = m.workspaces.name
+  peopleLoaded = false
+  let v = view || 'people'
+  if (v === 'add' && !canEdit()) v = 'people'
+  await go(v)
+}
+
+// ---------- Navigation ----------
+async function go(v) {
+  if (v === 'add' && !canEdit()) v = 'people'
+  view = v
+  Object.keys(VIEWS).forEach(k => $('view-' + k).classList.toggle('hidden', k !== v))
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v))
+  $('ph-over').textContent = VIEWS[v][0]
+  $('ph-title').textContent = VIEWS[v][1]
+  window.scrollTo(0, 0)
+  if (v === 'people') { if (!peopleLoaded) await loadPeople(); renderPeople() }
+  if (v === 'stats') { if (!peopleLoaded) await loadPeople(); renderStats() }
+  if (v === 'team') await loadTeam()
+  icons()
+}
+
+// ---------- Enregistrer ----------
+document.querySelectorAll('#f-sexe button').forEach(b => {
+  b.addEventListener('click', () => {
+    sexe = b.dataset.v
+    document.querySelectorAll('#f-sexe button').forEach(x => {
+      x.classList.toggle('active', x === b)
+      x.setAttribute('aria-checked', String(x === b))
+    })
+    setErr('e-sexe', '')
+  })
+})
+
+const drop = $('drop'), fileInput = $('f-photo')
+drop.addEventListener('click', () => fileInput.click())
+drop.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click() }
+})
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]) })
+;['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag') }))
+;['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag') }))
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) setFile(f) })
+$('rm-photo').addEventListener('click', () => clearFile())
+$('f-nom').addEventListener('input', () => setErr('e-nom', ''))
+$('f-age').addEventListener('input', () => setErr('e-age', ''))
+
+function setFile(f) {
+  if (!TYPES.includes(f.type)) return setErr('e-photo', 'Format non accepté. Utilisez JPG, PNG, WebP ou GIF.')
+  if (f.size > MAX_SIZE) return setErr('e-photo', 'La photo dépasse 5 Mo.')
+  file = f
+  setErr('e-photo', '')
+  const p = $('preview')
+  if (p.src) URL.revokeObjectURL(p.src)
+  p.src = URL.createObjectURL(f)
+  p.classList.remove('hidden')
+  $('rm-photo').classList.remove('hidden')
+}
+
+function clearFile() {
+  file = null
+  fileInput.value = ''
+  const p = $('preview')
+  if (p.src) URL.revokeObjectURL(p.src)
+  p.removeAttribute('src')
+  p.classList.add('hidden')
+  $('rm-photo').classList.add('hidden')
+}
+
+function resetForm() {
+  $('add-form').reset()
+  sexe = null
+  document.querySelectorAll('#f-sexe button').forEach(x => { x.classList.remove('active'); x.setAttribute('aria-checked', 'false') })
+  ;['e-nom', 'e-age', 'e-sexe', 'e-photo'].forEach(id => setErr(id, ''))
+  clearFile()
+}
+
+$('add-form').addEventListener('submit', e => {
+  e.preventDefault()
+  const nom = $('f-nom').value.trim()
+  const age = Number($('f-age').value)
+  const errors = [
+    setErr('e-nom', nom.length < 2 ? 'Saisissez le nom complet (2 caractères minimum).' : ''),
+    setErr('e-age', !Number.isInteger(age) || age < 1 || age > 149 ? "L'âge doit être un nombre entre 1 et 149." : ''),
+    setErr('e-sexe', !sexe ? 'Choisissez le sexe.' : ''),
+    setErr('e-photo', !file ? 'Ajoutez une photo.' : '')
+  ]
+  if (errors.some(Boolean)) return
+
+  busy($('btn-add'), async () => {
+    const ext = ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' })[file.type]
+    const path = `${ws}/${crypto.randomUUID()}.${ext}`
+    const up = await sb.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false })
+    if (up.error) return toast(fr(up.error), 'err')
+    const { error } = await sb.from('personnes').insert({ workspace_id: ws, nom, age, sexe, image_path: path })
+    if (error) {
+      await sb.storage.from(BUCKET).remove([path])
+      return toast(fr(error), 'err')
+    }
+    toast(`${nom} a été ajouté(e) à l'espace`, 'ok')
+    resetForm()
+    peopleLoaded = false
+  })
+})
+
+// ---------- Personnes ----------
+async function loadPeople() {
+  if (view === 'people') $('people').innerHTML = `<div class="grid">${'<div class="skel"></div>'.repeat(6)}</div>`
+  const { data, error } = await sb.from('personnes').select('*')
+    .eq('workspace_id', ws).order('created_at', { ascending: false })
+  if (error) { toast(fr(error), 'err'); people = []; return }
+  people = data || []
+  urls = {}
+  const paths = people.map(p => p.image_path).filter(Boolean)
+  if (paths.length) {
+    const { data: signed } = await sb.storage.from(BUCKET).createSignedUrls(paths, 3600)
+    ;(signed || []).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl })
+  }
+  peopleLoaded = true
+}
+
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => {
+    filter = c.dataset.f
+    document.querySelectorAll('.chip').forEach(x => x.classList.toggle('active', x === c))
+    renderPeople()
+  })
+})
+
+function renderPeople() {
+  const q = $('q').value.trim().toLowerCase()
+  const list = people.filter(p => (filter === 'all' || p.sexe === filter) && p.nom.toLowerCase().includes(q))
+  $('count').textContent = `${list.length} résultat${list.length > 1 ? 's' : ''}`
+
+  if (!people.length) {
+    $('people').innerHTML = emptyHtml('users', 'Aucune personne pour le moment',
+      canEdit() ? 'Ajoutez la première fiche de votre espace.' : 'Les fiches ajoutées par votre équipe apparaîtront ici.',
+      canEdit() ? `<button class="btn btn-primary" onclick="go('add')"><i data-lucide="user-plus"></i>Ajouter une personne</button>` : '')
+    return icons()
+  }
+  if (!list.length) {
+    $('people').innerHTML = emptyHtml('search-x', 'Aucun résultat', 'Essayez un autre nom ou un autre filtre.')
+    return icons()
+  }
+
+  $('people').innerHTML = '<div class="grid">' + list.map(p => {
+    const url = urls[p.image_path]
+    return `<article class="card pcard">
+      <div class="pimg">
+        ${url ? `<img src="${esc(url)}" alt="Photo de ${esc(p.nom)}" loading="lazy">` : `<div class="noimg">${esc(initials(p.nom))}</div>`}
+        ${canEdit() ? `<button class="icon-btn" aria-label="Supprimer la fiche de ${esc(p.nom)}" onclick="removePerson(${Number(p.id)})"><i data-lucide="trash-2"></i></button>` : ''}
+      </div>
+      <div class="pbody">
+        <div class="pname">${esc(p.nom)}</div>
+        <div class="pmeta"><span class="badge s-${SEXK[p.sexe] || 'a'}">${esc(p.sexe)}</span><span>${Number(p.age)} ans</span></div>
+        <div class="pby"><span>Par ${esc(p.created_by_name || '—')}</span><span>${fmtDate(p.created_at)}</span></div>
+      </div>
+    </article>`
+  }).join('') + '</div>'
+  icons()
+}
+
+async function removePerson(id) {
+  const p = people.find(x => x.id === id)
+  if (!p) return
+  const ok = await confirmModal({
+    title: 'Supprimer cette fiche ?',
+    text: `La fiche de ${p.nom} et sa photo seront définitivement supprimées pour toute l'équipe.`,
+    okLabel: 'Supprimer'
+  })
+  if (!ok) return
+  const { error } = await sb.from('personnes').delete().eq('id', id)
+  if (error) return toast(fr(error), 'err')
+  if (p.image_path) await sb.storage.from(BUCKET).remove([p.image_path])
+  people = people.filter(x => x.id !== id)
+  renderPeople()
+  toast('Fiche supprimée', 'ok')
+}
+
+// ---------- Analyse ----------
+function draw(id, config) {
+  if (charts[id]) charts[id].destroy()
+  charts[id] = new Chart($(id), config)
+}
+
+function renderStats() {
+  const total = people.length
+  $('stats-empty').classList.toggle('hidden', total > 0)
+  $('stats-content').classList.toggle('hidden', total === 0)
+  if (!total) {
+    $('stats-empty').innerHTML = emptyHtml('chart-pie', 'Pas encore de statistiques',
+      'Les graphiques apparaîtront dès la première fiche enregistrée.',
+      canEdit() ? `<button class="btn btn-primary" onclick="go('add')"><i data-lucide="user-plus"></i>Ajouter une personne</button>` : '')
+    return icons()
+  }
+
+  const ages = people.map(p => p.age)
+  const avg = ages.reduce((a, b) => a + b, 0) / total
+  const count = s => people.filter(p => p.sexe === s).length
+  const h = count('Masculin'), f = count('Féminin'), a = count('Autre')
+  const pct = n => Math.round(n / total * 100)
+  const card = (icon, label, value, sub) => `<div class="card stat">
+    <div class="stat-top">${label}<div class="stat-ic"><i data-lucide="${icon}"></i></div></div>
+    <div class="stat-v">${value}</div><div class="stat-s">${sub}</div></div>`
+
+  $('stat-cards').innerHTML =
+    card('users', 'Total', total, total > 1 ? 'personnes enregistrées' : 'personne enregistrée') +
+    card('cake', 'Âge moyen', Math.round(avg) + ' ans', `de ${Math.min(...ages)} à ${Math.max(...ages)} ans`) +
+    card('user', 'Hommes', h, pct(h) + ' % du total') +
+    card('user', 'Femmes', f, pct(f) + ' % du total')
+  icons()
+
+  draw('ch-sexe', {
+    type: 'doughnut',
+    data: { labels: ['Masculin', 'Féminin', 'Autre'],
+      datasets: [{ data: [h, f, a], backgroundColor: [COLORS.ink, COLORS.coral, COLORS.sand], borderWidth: 0, hoverOffset: 6 }] },
+    options: { maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 18 } } } }
+  })
+
+  const brackets = [['0-17', 0, 17], ['18-25', 18, 25], ['26-35', 26, 35], ['36-50', 36, 50], ['51-65', 51, 65], ['65+', 66, 200]]
+  draw('ch-age', {
+    type: 'bar',
+    data: { labels: brackets.map(b => b[0]),
+      datasets: [{ data: brackets.map(b => ages.filter(x => x >= b[1] && x <= b[2]).length),
+        backgroundColor: COLORS.coral, borderRadius: 8, maxBarThickness: 44 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EFEAE1' } }, x: { grid: { display: false } } } }
+  })
+}
+
+// ---------- Équipe ----------
+async function loadTeam() {
+  $('members').innerHTML = '<div class="skel" style="height:140px"></div>'
+  const [mem, inv] = await Promise.all([
+    sb.from('workspace_members').select('user_id, email, full_name, role, created_at')
+      .eq('workspace_id', ws).order('created_at'),
+    canAdmin()
+      ? sb.from('workspace_invitations').select('id, email, role').eq('workspace_id', ws).order('created_at')
+      : Promise.resolve({ data: [] })
+  ])
+  if (mem.error) return toast(fr(mem.error), 'err')
+  members = mem.data || []
+  $('m-count').textContent = `· ${members.length}`
+
+  $('members').innerHTML = members.map(m => {
+    const name = m.full_name || m.email.split('@')[0]
+    const me = m.user_id === user.id
+    const editable = canAdmin() && m.role !== 'owner' && !me
+    const control = editable
+      ? `<select aria-label="Rôle de ${esc(name)}" onchange="changeRole('${m.user_id}', this.value)">
+           ${['admin', 'editor', 'viewer'].map(r => `<option value="${r}" ${r === m.role ? 'selected' : ''}>${ROLE[r]}</option>`).join('')}
+         </select>
+         <button class="icon-btn" aria-label="Retirer ${esc(name)}" onclick="removeMember('${m.user_id}')"><i data-lucide="user-minus"></i></button>`
+      : `<span class="badge r-${m.role}">${ROLE[m.role]}</span>`
+    return `<div class="mrow">
+      <div class="avatar r-${m.role}">${esc(initials(name))}</div>
+      <div class="info"><div class="n">${esc(name)}${me ? ' <span style="color:var(--muted);font-weight:500">(vous)</span>' : ''}</div>
+      <div class="e">${esc(m.email)}</div></div>${control}</div>`
+  }).join('')
+
+  const pending = inv.data || []
+  $('pending').innerHTML = pending.length
+    ? pending.map(i => `<div class="mrow">
+        <div class="avatar" style="background:var(--sand);color:var(--muted)"><i data-lucide="mail"></i></div>
+        <div class="info"><div class="e" style="color:var(--ink);font-weight:600">${esc(i.email)}</div></div>
+        <span class="badge r-${i.role}">${ROLE[i.role]}</span>
+        <button class="icon-btn" aria-label="Annuler l'invitation" onclick="cancelInvite('${i.id}')"><i data-lucide="x"></i></button>
+      </div>`).join('')
+    : '<p style="color:var(--muted);font-size:14px;margin:8px 0 0">Aucune invitation en attente.</p>'
+  icons()
+}
+
+$('inv-email').addEventListener('input', () => setErr('e-inv', ''))
+
+$('invite-form').addEventListener('submit', e => {
+  e.preventDefault()
+  const email = $('inv-email').value.trim().toLowerCase()
+  if (!emailOk(email)) return setErr('e-inv', 'Saisissez une adresse email valide.')
+  if (email === user.email.toLowerCase()) return setErr('e-inv', "C'est votre propre email : saisissez celui de votre collègue.")
+  busy($('btn-invite'), async () => {
+    const { error } = await sb.rpc('dp_invite', { p_ws: ws, p_email: email, p_role: $('inv-role').value })
+    if (error) return setErr('e-inv', fr(error))
+    $('inv-email').value = ''
+    toast(`Invitation créée pour ${email}. Envoyez-lui le lien de l'application.`, 'ok')
+    await loadTeam()
+  })
+})
+
+async function changeRole(userId, newRole) {
+  const { error } = await sb.rpc('dp_set_role', { p_ws: ws, p_user: userId, p_role: newRole })
+  if (error) toast(fr(error), 'err')
+  else toast('Rôle mis à jour', 'ok')
+  await loadTeam()
+}
+
+async function removeMember(userId) {
+  const m = members.find(x => x.user_id === userId)
+  if (!m) return
+  const name = m.full_name || m.email
+  const ok = await confirmModal({
+    title: 'Retirer ce membre ?',
+    text: `${name} n'aura plus accès aux données de cet espace.`,
+    okLabel: 'Retirer'
+  })
+  if (!ok) return
+  const { error } = await sb.rpc('dp_remove_member', { p_ws: ws, p_user: userId })
+  if (error) toast(fr(error), 'err')
+  else toast('Membre retiré', 'ok')
+  await loadTeam()
+}
+
+async function cancelInvite(id) {
+  const { error } = await sb.rpc('dp_cancel_invite', { p_id: id })
+  if (error) toast(fr(error), 'err')
+  await loadTeam()
+}
+
+$('ws-form').addEventListener('submit', e => {
+  e.preventDefault()
+  const name = $('ws-name').value.trim()
+  if (!name) return toast("Saisissez un nom pour l'espace.", 'err')
+  busy($('btn-ws'), async () => {
+    const { error } = await sb.rpc('dp_rename_workspace', { p_ws: ws, p_name: name })
+    if (error) return toast(fr(error), 'err')
+    toast('Espace renommé', 'ok')
+    await loadWorkspaces(ws)
+  })
+})
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(APP_URL)
+    toast("Lien de l'application copié", 'ok')
+  } catch {
+    toast('Copiez ce lien : ' + APP_URL)
+  }
+}
+
+Object.assign(window, { showTab, logout, go, switchWs, removePerson, changeRole,
+  removeMember, cancelInvite, copyLink, resetForm, renderPeople })
+
+icons()
+</script>
+</body>
+</html>
